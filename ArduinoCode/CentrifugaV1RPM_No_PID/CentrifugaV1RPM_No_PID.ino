@@ -144,7 +144,7 @@ void drawSPEED(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   display->drawString(0 , 20 , "SET SPEED");
   display->setFont(ArialMT_Plain_24);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
-  String Rpm = String(TRPM);
+  String Rpm = String(ESC_PWM);
   display->drawString(64 , 28 , Rpm);
   display->setFont(ArialMT_Plain_10);
   display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -265,7 +265,9 @@ void loop()
             ESC_PWM = 20;
             SetTIME();
             SetSPEED();
-         }else{
+         }
+         else
+         {
             MIN = MIN - 1;
             SEC = SEC + 59;
          }
@@ -285,10 +287,10 @@ void loop()
     SetSPEED();
   }
 
-    if(TRPM >= 0 && TRPM <= 15000){                           
-        TRPM = TRPM + 100*encDIR;
-        if(TRPM <= 2400) TRPM = 2400;
-        if(TRPM > 15000) TRPM = 15000;
+    if(ESC_PWM >= 20 && ESC_PWM <= 255){                           
+        ESC_PWM = ESC_PWM + 1*encDIR;
+        if(ESC_PWM <= 20) ESC_PWM = 20;
+        if(ESC_PWM > 255) ESC_PWM = 255;
         encDIR = 0;  
       }
 
@@ -309,7 +311,7 @@ void loop()
    }
    
   ReadEnter();
-  SetESC();
+  //SetESC();
   myservo.write(ESC_PWM);
   
 }
@@ -324,12 +326,11 @@ void SetSPEED()
   
    while(ENTER == HIGH)                                         //runs till confirm with enter.
     {
-      if(TRPM >= 0 && TRPM <= 15000){                           // different scaling at bigger RPM
-        TRPM = TRPM + 100*encDIR;
-        if(TRPM <= 2400) TRPM = 2400;
-        if(TRPM > 15000) TRPM = 15000;
-        encDIR = 0; 
-         
+    if(ESC_PWM >= 20 && ESC_PWM <= 255){                           
+        ESC_PWM = ESC_PWM + 1*encDIR;
+        if(ESC_PWM <= 20) ESC_PWM = 20;
+        if(ESC_PWM > 255) ESC_PWM = 255;
+        encDIR = 0;  
       }
 
       int remainingTimeBudget = ui.update();
@@ -404,7 +405,7 @@ void ReadEnter()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Improvised avto speed correction, copares current rpm target rpm and scales PWM on esc accordingly
  
- void SetESC()                                             
+/* void SetESC()                                             
 {
   unsigned long currentmillis = millis();
   if (currentmillis - previusPWM >= 100)
@@ -418,5 +419,5 @@ void ReadEnter()
   if(diffRPM > 1500) ESC_PWM = 20;  // it current rpm is greatly bigger than target rpm set throttle to zero
   previusPWM = currentmillis;
   }
-}
+}*/
 
