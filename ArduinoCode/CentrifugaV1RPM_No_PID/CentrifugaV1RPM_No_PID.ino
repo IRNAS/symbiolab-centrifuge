@@ -43,9 +43,12 @@ int Apin = D6,Bpin = D5,ENTERpin = D7;
 int MIN = 0,SEC = 1,ESC_PWM = 20;
 unsigned long previusMillis = 0,previusSec = 0,TIME = 0;
 
-volatile int encDIR = 0;
+int encDIR = 0;
+int encSTATE = 0;
+int encCOUNT = 0;
 volatile byte A_SIG = LOW,B_SIG = HIGH,ENTER = LOW;
 volatile unsigned long SPEED = 4166000;
+
 // rpm reading 
 int sensorvalue;
 int state1 = HIGH;
@@ -59,7 +62,7 @@ long previusPrint = 0;
 long interval = 200;
 long currentTime;
 long prevTime = 1;
-long diffTime;
+long diffTime = 0;
 int sensorthreshold = 120;  
 // this value indicates the limit reading between dark and light,
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,24 +76,27 @@ void A_RISE()
 {
  detachInterrupt(Apin);
   A_SIG = HIGH;
-  //if(B_SIG == LOW) encDIR = 1;
-  //if(B_SIG == HIGH) encDIR = -1;
+  if(B_SIG == LOW) encDIR = 1;
+  if(B_SIG == HIGH) encDIR = -1;
+  ENC_COUNT();
  attachInterrupt(Apin, A_FALL, FALLING);
 }
 void A_FALL()
 {
   detachInterrupt(Apin);
   A_SIG = LOW;
-  //if(B_SIG == HIGH) encDIR = 1;
-  //if(B_SIG == LOW) encDIR = -1;
+  if(B_SIG == HIGH) encDIR = 1;
+  if(B_SIG == LOW) encDIR = -1;
+  ENC_COUNT();
   attachInterrupt(Apin, A_RISE, RISING); 
 }
 void B_RISE()
 {
   detachInterrupt(Bpin);
   B_SIG = HIGH;
-  //if(A_SIG == HIGH) encDIR = 1;
-  //if(A_SIG == LOW) encDIR = -1;
+  if(A_SIG == HIGH) encDIR = 1;
+  if(A_SIG == LOW) encDIR = -1;
+  ENC_COUNT();
   attachInterrupt(Bpin, B_FALL, FALLING);
 }
 void B_FALL()
@@ -99,6 +105,7 @@ void B_FALL()
   B_SIG = LOW;
   if(A_SIG == LOW) encDIR = 1;
   if(A_SIG == HIGH) encDIR = -1;
+  ENC_COUNT();
   attachInterrupt(Bpin, B_RISE, RISING); 
 }
 
@@ -163,7 +170,7 @@ void drawWORK(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_
   display->drawString(64 , 0 , "WORKING");
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(ArialMT_Plain_10);
-  String RPm = String(RPM) + "/" + String(TRPM) + "rpm";
+  String RPm = String(RPM) + " rpm";
   display->drawString(0 , 20 , RPm);
   display->setFont(ArialMT_Plain_24);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
@@ -240,15 +247,12 @@ void setup()
 void loop() 
 {
   int remainingTimeBudget = ui.update();     // display refresh
-
- 
   unsigned long currentMillis = millis();   //countdown timer
-    if (currentMillis - previusPrint >= 500)
+ /*   if (currentMillis - previusPrint >= 500)
   {
       Serial.print(RPM);Serial.print("/");Serial.println(ESC_PWM);
       previusPrint = currentMillis;
-  }
-  
+  }*/
   if (currentMillis - previusSec >= 1000)
   {
     previusSec = currentMillis;
@@ -260,7 +264,6 @@ void loop()
             while(ESC_PWM > 20){                // deceleration
               ESC_PWM = ESC_PWM - 5;
               myservo.write(ESC_PWM);
-
             }
             ESC_PWM = 20;
             SetTIME();
@@ -287,12 +290,30 @@ void loop()
     SetSPEED();
   }
 
-    if(ESC_PWM >= 20 && ESC_PWM <= 255){                           
-        ESC_PWM = ESC_PWM + 1*encDIR;
-        if(ESC_PWM <= 20) ESC_PWM = 20;
-        if(ESC_PWM > 255) ESC_PWM = 255;
-        encDIR = 0;  
-      }
+    if(ESC_PWM >= 20 && ESC_PWM <= 255){
+      if(encSTATE!=0){
+        /*Serial.print("In ESC: ");
+        Serial.print(ESC_PWM,DEC);
+        Serial.print(" in encSTATE: ");
+        Serial.print(encSTATE,DEC);*/                           
+        ESC_PWM = ESC_PWM + 1*encSTATE;
+        encSTATE = 0;
+        /*Serial.print(" out ESC: ");
+        Serial.print(ESC_PWM,DEC);
+        Serial.print(" out endDIR: ");
+        Serial.println(encSTATE,DEC); */
+        //range limiting
+        if(ESC_PWM <= 20){
+          ESC_PWM = 20;
+        }
+        else if(ESC_PWM >= 255){
+          ESC_PWM = 255;
+        }
+        Serial.print("Write ESC: ");
+        Serial.println(ESC_PWM,DEC);
+        myservo.write(ESC_PWM);
+      }  
+    }
 
   sensorvalue = analogRead(A0);                  // read from pin 0
   if(sensorvalue < sensorthreshold)
@@ -311,9 +332,7 @@ void loop()
    }
    
   ReadEnter();
-  //SetESC();
-  myservo.write(ESC_PWM);
-  
+  //SetESC();  
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -327,10 +346,10 @@ void SetSPEED()
    while(ENTER == HIGH)                                         //runs till confirm with enter.
     {
     if(ESC_PWM >= 20 && ESC_PWM <= 255){                           
-        ESC_PWM = ESC_PWM + 1*encDIR;
+        ESC_PWM = ESC_PWM + 1*encSTATE;
         if(ESC_PWM <= 20) ESC_PWM = 20;
-        if(ESC_PWM > 255) ESC_PWM = 255;
-        encDIR = 0;  
+        if(ESC_PWM >= 255) ESC_PWM = 255;
+        encSTATE = 0;  
       }
 
       int remainingTimeBudget = ui.update();
@@ -356,8 +375,8 @@ void SetTIME()
 
   while(ENTER == HIGH)                                        //set minutes
     {
-      MIN = MIN + encDIR;
-      encDIR = 0;
+      MIN = MIN + encSTATE;
+      encSTATE = 0;
       if(MIN <= 0)MIN = 0;
       int remainingTimeBudget = ui.update();
       if (remainingTimeBudget > 0) {
@@ -370,8 +389,8 @@ void SetTIME()
 
   while(ENTER == HIGH)                                        //set seconds
    {
-      SEC = SEC + encDIR;
-      encDIR = 0;
+      SEC = SEC + encSTATE;
+      encSTATE = 0;
       if(SEC < 0 && MIN > 0){
         SEC = 59;
         MIN = MIN - 1;
@@ -419,5 +438,20 @@ void ReadEnter()
   if(diffRPM > 1500) ESC_PWM = 20;  // it current rpm is greatly bigger than target rpm set throttle to zero
   previusPWM = currentmillis;
   }
-}*/
+}*/ 
+void ENC_COUNT()
+{
+  encCOUNT = encCOUNT + encDIR;
+  if(encCOUNT <= -4)
+  {
+    encSTATE = -1;
+    encCOUNT = 0;
+  }
+  else if(encCOUNT >= 4)
+  {
+    encSTATE = 1;
+    encCOUNT = 0;
+  }
+  encDIR = 0;
+}
 
