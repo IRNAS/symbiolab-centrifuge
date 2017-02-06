@@ -213,7 +213,6 @@ void setup()
 //display setup
 
   ui.setTargetFPS(10);
-
   ui.disableAutoTransition();
   ui.disableIndicator();
   ui.setIndicatorPosition(RIGHT);            // You can change this to TOP, LEFT, BOTTOM, RIGHT
@@ -246,28 +245,30 @@ void setup()
 ///////////////////////////////////////////////////////////////////////////////////////////////
 void loop() 
 {
-  int remainingTimeBudget = ui.update();     // display refresh
-  unsigned long currentMillis = millis();   //countdown timer
- /*   if (currentMillis - previusPrint >= 500)
+  int remainingTimeBudget = ui.update();      // display refresh
+  unsigned long currentMillis = millis();     //countdown timer
+  if (currentMillis - previusPrint >= 1000)   // Serial printing
   {
-      Serial.print(RPM);Serial.print("/");Serial.println(ESC_PWM);
+      Serial.print(RPM,0);
+      Serial.print("/");
+      Serial.println(ESC_PWM);
       previusPrint = currentMillis;
-  }*/
+  }
   if (currentMillis - previusSec >= 1000)
   {
     previusSec = currentMillis;
     SEC = SEC - 1;
     if(SEC<=0)                              
       {
-        if(SEC<=0 && MIN<=0)                //runs on first round if SEC and MIN set to 0
+        if(SEC<=0 && MIN<=0)                    //runs on first round if SEC and MIN set to 0
          {
-            while(ESC_PWM > 20){                // deceleration
+            while(ESC_PWM > 20){                // deceleration when time hits 0:0
               ESC_PWM = ESC_PWM - 5;
               myservo.write(ESC_PWM);
             }
-            ESC_PWM = 20;
-            SetTIME();
-            SetSPEED();
+              ESC_PWM = 20;
+              SetTIME();
+              SetSPEED();
          }
          else
          {
@@ -278,7 +279,7 @@ void loop()
    }
   
   if(ENTER == LOW) {
-    while(ESC_PWM > 20){                                 // deceleration
+    while(ESC_PWM > 20){                          // deceleration if canceled via encoder click
         ESC_PWM = ESC_PWM - 5;
         myservo.write(ESC_PWM);
         delay(10);
@@ -286,11 +287,11 @@ void loop()
     ESC_PWM = 20;
     myservo.write(ESC_PWM);
     ENTER = HIGH;
-    SetTIME();              // stops and returns to Set time menu
+    SetTIME();                                     // stops and returns to Set time menu
     SetSPEED();
   }
 
-    if(ESC_PWM >= 20 && ESC_PWM <= 255){
+    if(ESC_PWM >= 20 && ESC_PWM <= 255){           // changing the rotation speed while running
       if(encSTATE!=0){
         /*Serial.print("In ESC: ");
         Serial.print(ESC_PWM,DEC);
@@ -315,17 +316,17 @@ void loop()
       }  
     }
 
-  sensorvalue = analogRead(A0);                  // read from pin 0
+  sensorvalue = analogRead(A0);                  // read from analog pin for rpm sens
   if(sensorvalue < sensorthreshold)
     state1 = HIGH;
    else
     state1 = LOW;                           
    if(state2!=state1){                           //counts when the state change, thats from (dark to light) or 
-                                                 //from (light to dark), remember that IR light is invisible to us.
-     if (state2>state1){
-       currentTime = micros();                  // Get the arduino time in microseconds
-       diffTime = currentTime - prevTime;       // calculate the time diff from the last meet-up
-       RPM = 60000000/diffTime;                 // calculate how many rev per minute
+                                                 //from (light to dark)
+     if (state2>state1){                         // only every second change
+       currentTime = micros();                   // Get the arduino time in microseconds
+       diffTime = currentTime - prevTime;        // calculate the time diff from the last meet-up
+       RPM = 60000000/diffTime;                  // calculate how many rev per minute
        prevTime = currentTime;
      }
      state2 = state1;
@@ -408,13 +409,14 @@ void SetTIME()
   delay(100);             
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
+//encoder click debounce
 void ReadEnter()
 {
   
   bool Enter = digitalRead(ENTERpin);                      // Enter debounce
   if(Enter == LOW){
     unsigned long currentmillis = millis();
-    if (currentmillis - previusENTER >= 1000)
+    if (currentmillis - previusENTER >= 500)
     {
      ENTER = Enter;
      previusENTER = currentmillis;
@@ -427,18 +429,21 @@ void ReadEnter()
 /* void SetESC()                                             
 {
   unsigned long currentmillis = millis();
-  if (currentmillis - previusPWM >= 100)
+  if (currentmillis - previusPWM >= 500)
   {
   float diffRPM = RPM - TRPM;
-  if(diffRPM > 150) ESC_PWM--;
+  if(diffRPM > 200) ESC_PWM--;
   if(ESC_PWM >= 255) ESC_PWM = 255;
-  if(diffRPM < -150) ESC_PWM++;
+  if(diffRPM < -200) ESC_PWM++;
   if(ESC_PWM <= 20) ESC_PWM = 20;
-  if(TRPM <= 2400) ESC_PWM = 20;
+  if(TRPM <= 3000) ESC_PWM = 20;
   if(diffRPM > 1500) ESC_PWM = 20;  // it current rpm is greatly bigger than target rpm set throttle to zero
   previusPWM = currentmillis;
   }
 }*/ 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// encoder pulse counter. to counter jumping values in case of missing a encoder pulse.
 void ENC_COUNT()
 {
   encCOUNT = encCOUNT + encDIR;
