@@ -55,16 +55,15 @@ int state1 = HIGH;
 int state2;
 float RPM = 0;
 float TRPM = 0;
-long prevMillis = 0;
-long previusPWM = 0;
-long previusENTER = 0;
-long previusPrint = 0;
-long interval = 200;
-long currentTime;
-long prevTime = 1;
-long diffTime = 0;
-int sensorthreshold = 120;  
-// this value indicates the limit reading between dark and light,
+unsigned long prevMillis = 0;
+unsigned long previusPWM = 0;
+unsigned long previusENTER = 0;
+unsigned long previusPrint = 0;
+unsigned long interval = 200;
+unsigned long currentTime;
+unsigned long prevTime = 1;
+unsigned long diffTime = 0;
+int sensorthreshold = 120;           // this value indicates the limit reading between dark and light,
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // internal timer interrupt for stepper controll
 
@@ -120,13 +119,13 @@ void msOverlay(OLEDDisplay *display, OLEDDisplayUiState* state)
 
 void drawTIME(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) 
 {
-  //basic menu for setting tame
+  //basic menu for setting time
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(ArialMT_Plain_16);
-  display->drawString(64 , 0 , "SETTINGS");
-  display->setTextAlignment(TEXT_ALIGN_LEFT);
-  display->setFont(ArialMT_Plain_10);
-  display->drawString(0 , 20 , "SET TIME");
+  display->drawString(64 , 0 , "SET TIME");
+  //display->setTextAlignment(TEXT_ALIGN_LEFT);
+  //display->setFont(ArialMT_Plain_10);
+  //display->drawString(0 , 20 , "SET TIME");
   display->setFont(ArialMT_Plain_24);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   String Time = String(MIN) + ":" + String(SEC);
@@ -145,10 +144,10 @@ void drawSPEED(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   // Display to set Rpm
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(ArialMT_Plain_16);
-  display->drawString(64 , 0 , "SETTINGS");
-  display->setTextAlignment(TEXT_ALIGN_LEFT);
-  display->setFont(ArialMT_Plain_10);
-  display->drawString(0 , 20 , "SET SPEED");
+  display->drawString(64 , 0 , "SET SPEED");
+  //display->setTextAlignment(TEXT_ALIGN_LEFT);
+  //display->setFont(ArialMT_Plain_10);
+  //display->drawString(0 , 20 , "SET SPEED");
   display->setFont(ArialMT_Plain_24);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   String Rpm = String(ESC_PWM);
@@ -202,7 +201,6 @@ void (*overlays[])(OLEDDisplay *display, OLEDDisplayUiState* state)             
 void setup()   
 {  
 
-
   Serial.begin(115200);
   pinMode(Apin, INPUT_PULLUP);
   pinMode(Bpin, INPUT_PULLUP);
@@ -247,8 +245,9 @@ void loop()
 {
   int remainingTimeBudget = ui.update();      // display refresh
   unsigned long currentMillis = millis();     //countdown timer
-  if (currentMillis - previusPrint >= 1000)   // Serial printing
+  if (currentMillis - previusPrint >= 1000)   // Serial print of current speed
   {
+      
       Serial.print(RPM,0);
       Serial.print("/");
       Serial.println(ESC_PWM);
@@ -348,8 +347,15 @@ void SetSPEED()
     {
     if(ESC_PWM >= 20 && ESC_PWM <= 255){                           
         ESC_PWM = ESC_PWM + 1*encSTATE;
-        if(ESC_PWM <= 20) ESC_PWM = 20;
-        if(ESC_PWM >= 255) ESC_PWM = 255;
+        //Range limiting
+        if(ESC_PWM <= 20)
+        {
+          ESC_PWM = 20;
+        }
+        if(ESC_PWM >= 255)
+        {
+          ESC_PWM = 255;
+        }
         encSTATE = 0;  
       }
 
@@ -361,9 +367,8 @@ void SetSPEED()
     }
     
     ENTER = HIGH;
-   
     ui.ThisFrame(1);
-    delay(10);
+    
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -371,9 +376,9 @@ void SetSPEED()
 
 void SetTIME()
 {
-  ENTER = HIGH;
   ui.ThisFrame(2);
-
+  
+  ENTER = HIGH;
   while(ENTER == HIGH)                                        //set minutes
     {
       MIN = MIN + encSTATE;
@@ -385,9 +390,8 @@ void SetTIME()
       }
       ReadEnter();
     }
-  delay(100);
+ 
   ENTER = HIGH;
-
   while(ENTER == HIGH)                                        //set seconds
    {
       SEC = SEC + encSTATE;
@@ -405,8 +409,7 @@ void SetTIME()
       delay(remainingTimeBudget);
       }
       ReadEnter();   
-   } 
-  delay(100);             
+   }              
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //encoder click debounce
@@ -437,8 +440,9 @@ void ReadEnter()
   if(diffRPM < -200) ESC_PWM++;
   if(ESC_PWM <= 20) ESC_PWM = 20;
   if(TRPM <= 3000) ESC_PWM = 20;
-  if(diffRPM > 1500) ESC_PWM = 20;  // it current rpm is greatly bigger than target rpm set throttle to zero
+  if(diffRPM > 2000) ESC_PWM = 20;  // it current rpm is greatly bigger than target rpm set throttle to zero
   previusPWM = currentmillis;
+  myservo.write(ESC_PWM);
   }
 }*/ 
 
