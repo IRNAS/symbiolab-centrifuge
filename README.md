@@ -41,6 +41,7 @@ For the Symbiolab centrifuge we are using a [A2212 KV1000](http://www.robotdigg.
 IR tachometer is used for RPM sensing and is crucial to achieving a self speed regulating controll. The sensor works with the help of reflecting light from the brushless motor therefore it is important to tape up a part of the motor, with a black(dark) tape, to create different levels of light reflecting from the motor. A LMV 761 comparator is added to transform the analog value from the photodiode to a rectangle pulse when it exceeds a reference value set via potentiometer. With this it is possible to connect the photodiode to a interrupt pin, making shure we do not miss out any positive pulses resoulting a foulty rpm reading. this method is also fater than ADC reading, thus making the whole controller faster.
 
 #### Tachometer schematic 
+![Tachometer schematic](https://github.com/symbiolab/Symbiolab_Centrifuge/blob/master/IR_Sens.png)
 
 ### Three state switch
 the switch is essentially used to turn on/off the centrifuge, however you can switch between power from the DC jack or LiPo battery.
